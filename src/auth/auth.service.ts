@@ -42,6 +42,13 @@ export class AuthService {
     return { message: 'User Registered Successfully' };
   }
 
+  async getMe(userId: string) {
+    const user = await this.userRepository.findById(userId);
+    if (!user) throw new UnauthorizedException('User not found');
+    const { password: _, ...profile } = user;
+    return profile;
+  }
+
   async login({ email, password }: { email: string; password: string }) {
     const user = await this.userRepository.findByEmail(email);
     if (!user) {
@@ -51,10 +58,29 @@ export class AuthService {
     if (!valid) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    const token = await this.jwtService.signAsync({
-      sub: user.id,
-      role: user.role,
-    });
-    return { access_token: token };
+    const [access_token, refresh_token] = await Promise.all([
+      this.jwtService.signAsync({ sub: user.id, role: user.role }, { expiresIn: '15m' }),
+      this.jwtService.signAsync({ sub: user.id, type: 'refresh' }, { expiresIn: '7d' }),
+    ]);
+    return { access_token, refresh_token };
+  }
+
+  async refresh(token: string) {
+    let payload: any;
+    try {
+      payload = await this.jwtService.verifyAsync(token);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+    if (payload.type !== 'refresh') {
+      throw new UnauthorizedException('Invalid token type');
+    }
+    const user = await this.userRepository.findById(payload.sub);
+    if (!user) throw new UnauthorizedException('User not found');
+    const access_token = await this.jwtService.signAsync(
+      { sub: user.id, role: user.role },
+      { expiresIn: '15m' },
+    );
+    return { access_token };
   }
 }

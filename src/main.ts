@@ -11,6 +11,7 @@ async function bootstrap() {
       transform: true,
     }),
   );
+  app.getHttpAdapter().get('/health', (_req: any, res: any) => res.status(200).json({ status: 'ok' }));
   console.log('server running on port 3001');
   await app.listen(process.env.PORT ?? 3001);
 }
