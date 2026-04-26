@@ -59,7 +59,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
     const [access_token, refresh_token] = await Promise.all([
-      this.jwtService.signAsync({ sub: user.id, role: user.role }, { expiresIn: '15m' }),
+      this.jwtService.signAsync({ sub: user.id, role: user.role }, { expiresIn: '1h' }),
       this.jwtService.signAsync({ sub: user.id, type: 'refresh' }, { expiresIn: '7d' }),
     ]);
     return { access_token, refresh_token };
@@ -79,7 +79,7 @@ export class AuthService {
     if (!user) throw new UnauthorizedException('User not found');
     const access_token = await this.jwtService.signAsync(
       { sub: user.id, role: user.role },
-      { expiresIn: '15m' },
+      { expiresIn: '1h' },
     );
     return { access_token };
   }
