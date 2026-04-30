@@ -7,10 +7,12 @@ import { UserRepository } from './repositories/user.repository';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { User } from 'src/users/entities/users.entity';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
   imports: [
     ConfigModule,
+    StorageModule,
     TypeOrmModule.forFeature([User]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
