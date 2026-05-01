@@ -49,6 +49,16 @@ export class AuthController {
     return this.authService.deleteProfilePhoto(req.user.id);
   }
 
+  @Post('verify-email/send')
+  sendVerificationOtp(@Body('email') email: string) {
+    return this.authService.sendVerificationOtp(email);
+  }
+
+  @Post('verify-email')
+  verifyEmail(@Body('email') email: string, @Body('code') code: string) {
+    return this.authService.verifyEmail(email, code);
+  }
+
   @Post('refresh')
   refresh(@Body('refresh_token') token: string) {
     return this.authService.refresh(token);

@@ -8,11 +8,15 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { User } from 'src/users/entities/users.entity';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { StorageModule } from '../storage/storage.module';
+import { RedisModule } from '../redis/redis.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
     ConfigModule,
     StorageModule,
+    RedisModule,
+    NotificationModule,
     TypeOrmModule.forFeature([User]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
