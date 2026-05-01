@@ -131,6 +131,66 @@ export class AuthService {
     return { message: 'Email verified successfully', access_token, refresh_token };
   }
 
+  // ── OTP Login ─────────────────────────────────────────────────────────────
+
+  async sendLoginOtp(email: string) {
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) throw new NotFoundException('No account found with that email');
+    if (!user.isEmailVerified) throw new BadRequestException('Please verify your email before using OTP login');
+
+    const key = `otp:login:${user.id}`;
+    const existing = await this.redisService.getOtp(key);
+
+    if (existing) {
+      const elapsed = Date.now() - existing.sentAt;
+      if (elapsed < 60_000) {
+        const secondsLeft = Math.ceil((60_000 - elapsed) / 1000);
+        throw new BadRequestException(`Please wait ${secondsLeft} seconds before requesting again`);
+      }
+    }
+
+    const code = generateOtp();
+    await this.redisService.setOtp(key, { code, attempts: 0, sentAt: Date.now() }, 300);
+
+    this.logger.log(`Sending login OTP to ${user.email}`);
+    try {
+      await this.notificationService.sendEmail(
+        user.email,
+        'Your login code',
+        otpEmailHtml(code, 'login'),
+      );
+      this.logger.log(`Login OTP sent successfully to ${user.email}`);
+    } catch {
+      await this.redisService.deleteOtp(key);
+      throw new InternalServerErrorException('Failed to send OTP, please try again');
+    }
+
+    return { message: 'Login code sent to your email' };
+  }
+
+  async verifyLoginOtp(email: string, code: string) {
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) throw new NotFoundException('No account found with that email');
+
+    const key = `otp:login:${user.id}`;
+    const otp = await this.redisService.getOtp(key);
+    if (!otp) throw new BadRequestException('OTP expired or not found, please request a new one');
+
+    if (otp.code !== code) {
+      otp.attempts += 1;
+      if (otp.attempts >= 3) {
+        await this.redisService.deleteOtp(key);
+        throw new BadRequestException('Too many wrong attempts, please request a new code');
+      }
+      await this.redisService.updateOtp(key, otp);
+      throw new BadRequestException(`Invalid code, ${3 - otp.attempts} attempt(s) remaining`);
+    }
+
+    await this.redisService.deleteOtp(key);
+    const [access_token, refresh_token] = await this.signTokens(user);
+    return { access_token, refresh_token };
+  }
+
   // ── Profile ───────────────────────────────────────────────────────────────
 
   async getMe(userId: string) {

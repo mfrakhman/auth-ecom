@@ -59,6 +59,16 @@ export class AuthController {
     return this.authService.verifyEmail(email, code);
   }
 
+  @Post('login/otp/send')
+  sendLoginOtp(@Body('email') email: string) {
+    return this.authService.sendLoginOtp(email);
+  }
+
+  @Post('login/otp')
+  verifyLoginOtp(@Body('email') email: string, @Body('code') code: string) {
+    return this.authService.verifyLoginOtp(email, code);
+  }
+
   @Post('refresh')
   refresh(@Body('refresh_token') token: string) {
     return this.authService.refresh(token);
