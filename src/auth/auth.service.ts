@@ -191,6 +191,95 @@ export class AuthService {
     return { access_token, refresh_token };
   }
 
+  // ── Forgot Password ───────────────────────────────────────────────────────
+
+  async sendForgotPasswordOtp(email: string) {
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) throw new NotFoundException('No account found with that email');
+
+    const key = `otp:reset:${user.id}`;
+    const existing = await this.redisService.getOtp(key);
+
+    if (existing) {
+      const elapsed = Date.now() - existing.sentAt;
+      if (elapsed < 60_000) {
+        const secondsLeft = Math.ceil((60_000 - elapsed) / 1000);
+        throw new BadRequestException(`Please wait ${secondsLeft} seconds before requesting again`);
+      }
+    }
+
+    const code = generateOtp();
+    await this.redisService.setOtp(key, { code, attempts: 0, sentAt: Date.now() }, 600);
+
+    this.logger.log(`Sending password reset OTP to ${user.email}`);
+    try {
+      await this.notificationService.sendEmail(
+        user.email,
+        'Reset your password',
+        otpEmailHtml(code, 'password reset'),
+      );
+    } catch {
+      await this.redisService.deleteOtp(key);
+      throw new InternalServerErrorException('Failed to send OTP, please try again');
+    }
+
+    return { message: 'Reset code sent to your email' };
+  }
+
+  async verifyForgotPasswordOtp(email: string, code: string) {
+    const user = await this.userRepository.findByEmail(email);
+    if (!user) throw new NotFoundException('No account found with that email');
+
+    const key = `otp:reset:${user.id}`;
+    const otp = await this.redisService.getOtp(key);
+    if (!otp) throw new BadRequestException('OTP expired or not found, please request a new one');
+
+    if (otp.code !== code) {
+      otp.attempts += 1;
+      if (otp.attempts >= 3) {
+        await this.redisService.deleteOtp(key);
+        throw new BadRequestException('Too many wrong attempts, please request a new code');
+      }
+      await this.redisService.updateOtp(key, otp);
+      throw new BadRequestException(`Invalid code, ${3 - otp.attempts} attempt(s) remaining`);
+    }
+
+    await this.redisService.deleteOtp(key);
+
+    const reset_token = await this.jwtService.signAsync(
+      { sub: user.id, type: 'reset' },
+      { expiresIn: '10m' },
+    );
+
+    // Store token in Redis so it can be invalidated after use
+    await this.redisService.set(`reset_token:${user.id}`, reset_token, 600);
+
+    return { reset_token };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    let payload: any;
+    try {
+      payload = await this.jwtService.verifyAsync(token);
+    } catch {
+      throw new BadRequestException('Reset link expired or invalid');
+    }
+
+    if (payload.type !== 'reset') throw new BadRequestException('Invalid token');
+
+    const stored = await this.redisService.get(`reset_token:${payload.sub}`);
+    if (!stored || stored !== token) throw new BadRequestException('Reset link already used or expired');
+
+    const user = await this.userRepository.findById(payload.sub);
+    if (!user) throw new NotFoundException('User not found');
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await this.userRepository.updateUser(user.id, { password: hashed } as any);
+    await this.redisService.del(`reset_token:${payload.sub}`);
+
+    return { message: 'Password reset successfully' };
+  }
+
   // ── Profile ───────────────────────────────────────────────────────────────
 
   async getMe(userId: string) {

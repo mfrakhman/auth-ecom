@@ -69,6 +69,21 @@ export class AuthController {
     return this.authService.verifyLoginOtp(email, code);
   }
 
+  @Post('forgot-password')
+  sendForgotPasswordOtp(@Body('email') email: string) {
+    return this.authService.sendForgotPasswordOtp(email);
+  }
+
+  @Post('forgot-password/verify')
+  verifyForgotPasswordOtp(@Body('email') email: string, @Body('code') code: string) {
+    return this.authService.verifyForgotPasswordOtp(email, code);
+  }
+
+  @Post('reset-password')
+  resetPassword(@Body('token') token: string, @Body('password') password: string) {
+    return this.authService.resetPassword(token, password);
+  }
+
   @Post('refresh')
   refresh(@Body('refresh_token') token: string) {
     return this.authService.refresh(token);
