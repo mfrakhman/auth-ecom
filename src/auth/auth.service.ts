@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -31,6 +32,8 @@ function otpEmailHtml(code: string, action: string): string {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
@@ -86,12 +89,14 @@ export class AuthService {
     const code = generateOtp();
     await this.redisService.setOtp(key, { code, attempts: 0, sentAt: Date.now() }, 300);
 
+    this.logger.log(`Sending OTP to ${user.email}`);
     try {
       await this.notificationService.sendEmail(
         user.email,
         'Verify your email',
         otpEmailHtml(code, 'email verification'),
       );
+      this.logger.log(`OTP sent successfully to ${user.email}`);
     } catch {
       await this.redisService.deleteOtp(key);
       throw new InternalServerErrorException('Failed to send OTP, please try again');
