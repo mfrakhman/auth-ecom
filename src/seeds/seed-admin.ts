@@ -3,7 +3,8 @@ import * as bcrypt from 'bcryptjs';
 import * as dotenv from 'dotenv';
 import { User } from '../users/entities/users.entity';
 
-dotenv.config();
+const isProd = process.argv.includes('--prod');
+dotenv.config({ path: isProd ? '.env.production' : '.env' });
 
 const ds = new DataSource({
   type: 'postgres',
@@ -12,6 +13,7 @@ const ds = new DataSource({
   username: process.env.DB_USER ?? 'postgres',
   password: process.env.DB_PASS ?? 'postgres',
   database: process.env.DB_NAME ?? 'microserv_db',
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
   entities: [User],
   synchronize: false,
 });
