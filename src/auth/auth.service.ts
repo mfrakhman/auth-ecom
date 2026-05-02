@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -136,7 +137,10 @@ export class AuthService {
   async sendLoginOtp(email: string) {
     const user = await this.userRepository.findByEmail(email);
     if (!user) throw new NotFoundException('No account found with that email');
-    if (!user.isEmailVerified) throw new BadRequestException('Please verify your email before using OTP login');
+    if (!user.isEmailVerified) {
+      this.sendVerificationOtp(email).catch(() => {});
+      throw new ForbiddenException('EMAIL_NOT_VERIFIED');
+    }
 
     const key = `otp:login:${user.id}`;
     const existing = await this.redisService.getOtp(key);
@@ -333,6 +337,11 @@ export class AuthService {
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) throw new UnauthorizedException('Invalid credentials');
+
+    if (!user.isEmailVerified) {
+      this.sendVerificationOtp(email).catch(() => {});
+      throw new ForbiddenException('EMAIL_NOT_VERIFIED');
+    }
 
     const [access_token, refresh_token] = await this.signTokens(user);
     return { access_token, refresh_token };

@@ -19,6 +19,7 @@ import { UsersModule } from './users/users.module';
         username: configService.get('DB_USER'),
         password: configService.get('DB_PASS'),
         database: configService.get('DB_NAME'),
+        ssl: configService.get('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
         autoLoadEntities: true,
         synchronize: true,
       }),
