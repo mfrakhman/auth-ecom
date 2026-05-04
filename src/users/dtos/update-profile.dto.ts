@@ -1,42 +1,5 @@
-import {
-  IsDateString,
-  IsEnum,
-  IsOptional,
-  IsString,
-  ValidateNested,
-} from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 import { Gender } from '../entities/users.entity';
-
-export class AddressDto {
-  @IsOptional()
-  @IsString()
-  street?: string;
-
-  @IsOptional()
-  @IsString()
-  district?: string;
-
-  @IsOptional()
-  @IsString()
-  subdistrict?: string;
-
-  @IsOptional()
-  @IsString()
-  city?: string;
-
-  @IsOptional()
-  @IsString()
-  province?: string;
-
-  @IsOptional()
-  @IsString()
-  postalCode?: string;
-
-  @IsOptional()
-  @IsString()
-  country?: string;
-}
 
 export class UpdateProfileDto {
   @IsOptional()
@@ -58,9 +21,4 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   phone?: string;
-
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => AddressDto)
-  address?: AddressDto;
 }

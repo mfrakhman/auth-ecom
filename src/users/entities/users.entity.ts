@@ -11,16 +11,6 @@ export enum Gender {
   FEMALE = 'FEMALE',
 }
 
-export interface Address {
-  street?:       string;
-  district?:     string;
-  subdistrict?:  string;
-  city?:         string;
-  province?:     string;
-  postalCode?:   string;
-  country?:      string;
-}
-
 @Entity()
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -52,9 +42,6 @@ export class User {
 
   @Column({ type: 'varchar', unique: true, nullable: true, default: null })
   phone!: string | null;
-
-  @Column({ type: 'jsonb', nullable: true, default: null })
-  address!: Address | null;
 
   @Column({ type: 'varchar', nullable: true, default: null })
   profilePhotoUrl!: string | null;
